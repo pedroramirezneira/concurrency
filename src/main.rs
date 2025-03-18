@@ -4,6 +4,7 @@ mod server;
 
 use http::http_status_code::HttpStatusCode;
 use server::web_server::WebServer;
+use response::pi::leibniz;
 
 fn main() {
     let mut server = WebServer::new();
@@ -13,7 +14,7 @@ fn main() {
     });
     server.get("/pi/:a", |context| {
         let number = context.get_request().get_param("a").unwrap();
-        let number = number.parse::<f64>();
+        let number = number.parse::<u64>();
         match number {
             Err(_) => {
                 context.set_status(HttpStatusCode::BadRequest);
@@ -21,7 +22,7 @@ fn main() {
             }
             Ok(number) => {
                 context.set_status(HttpStatusCode::Ok);
-                context.send_text(&(number * 3.14159).to_string());
+                context.send_text(&leibniz(number).to_string());
             }
         }
     });
