@@ -36,6 +36,5 @@ fn main() {
             }
         }
     });
-    let server = server.build();
     server.serve(5000);
 }

@@ -27,17 +27,13 @@ impl WebServer {
         }
     }
 
-    pub fn build(self) -> Arc<WebServer> {
-        Arc::new(self)
-    }
-
     /** Adds a get route to the server */
     pub fn get(&mut self, route: &str, handler: fn(context: &mut Context)) {
         let key = Pair::new(HttpMethod::Get, Box::new(route.to_string()));
         self.handlers.insert(key, handler);
     }
 
-    pub fn serve(self: Arc<Self>, port: u32) {
+    pub fn serve(self, port: u32) {
         let address = format!("127.0.0.1:{}", port);
         let listener = TcpListener::bind(address);
         if listener.is_err() {
@@ -45,8 +41,9 @@ impl WebServer {
         }
         let listener = listener.unwrap();
         println!("Server is listening on port {}", port);
+        let server = Arc::new(self);
         for incoming in listener.incoming() {
-            let server = Arc::clone(&self);
+            let server = Arc::clone(&server);
             thread::spawn(move || {
                 if incoming.is_err() {
                     return;
