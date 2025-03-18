@@ -4,7 +4,7 @@ use crate::{
         http_status_code::HttpStatusCode,
     },
     response::not_found_response::not_found_response,
-    server::request::Request,
+    server::{combinations::generate_route_combinations, request::Request},
 };
 use std::{
     collections::HashMap,
@@ -38,6 +38,7 @@ impl WebServer {
             panic!("Failed to bind to port {}", port);
         }
         let listener = listener.unwrap();
+        println!("Server is listening on port {}", port);
         for incoming in listener.incoming() {
             if incoming.is_err() {
                 continue;
@@ -62,17 +63,29 @@ impl WebServer {
                 continue;
             }
             let route = args[0].split(" ").collect::<Vec<&str>>()[1];
-            let key = Pair::new(method.unwrap(), route.to_string());
-            let handler = self.handlers.get(&key);
-            if handler.is_none() {
+            let possible_routes = generate_route_combinations(route);
+            let formatted_route = possible_routes.iter().find(|route| {
+                self.handlers
+                    .contains_key(&Pair::new(method.clone().unwrap(), route.to_string()))
+            });
+            if formatted_route.is_none() {
                 stream.write_all(not_found_response().as_bytes()).unwrap();
                 stream.flush().unwrap();
                 continue;
             }
-            let request = Request::new(HashMap::new());
+            let formatted_route = formatted_route.unwrap();
+            let key = Pair::new(method.unwrap(), formatted_route.to_string());
+            let handler = self.handlers.get(&key).unwrap();
+            let mut params = HashMap::<String, String>::new();
+            let index = formatted_route.split("/").position(|path| path == ":a");
+            if index.is_some() {
+                let index = index.unwrap();
+                let param = route.split("/").collect::<Vec<&str>>()[index];
+                params.insert("a".to_string(), param.to_string());
+            }
+            let request = Request::new(params);
             let status_code = HttpStatusCode::Ok;
             let mut context = Context::new(request, status_code);
-            let handler = handler.unwrap();
             handler(&mut context);
             let body = context.get_body();
             let status_code = context.get_status();
