@@ -2,10 +2,10 @@ mod http;
 mod response;
 mod server;
 
-use std::time::Instant;
 use http::http_status_code::HttpStatusCode;
-use server::web_server::WebServer;
 use response::pi::leibniz;
+use server::web_server::WebServer;
+use std::time::Instant;
 
 fn main() {
     let mut server = WebServer::new();
@@ -26,12 +26,16 @@ fn main() {
                 context.set_status(HttpStatusCode::Ok);
                 let pi = leibniz(number);
                 let elapsed = start.elapsed().as_secs_f64();
-                let result = format!("Valor de pi para el termino {}: {} (Tiempo: {})",
-                                     number, pi.to_string(), &elapsed.to_string());
+                let result = format!(
+                    "Valor de pi para el termino {}: {} (Tiempo: {})",
+                    number,
+                    pi.to_string(),
+                    &elapsed.to_string()
+                );
                 context.send_text(&*result);
             }
         }
     });
-    let server = server;
+    let server = server.build();
     server.serve(5000);
 }
