@@ -1,10 +1,10 @@
 use std::fs::File;
-use std::path::Path;
 use std::io::{self, BufRead, Seek, SeekFrom};
 use std::sync::Arc;
 use std::thread;
 
 
+use crate::bruteforce::bruteforce;
 use crate::SearchStrategy;
 
 pub struct SequentialSearch;
@@ -17,7 +17,7 @@ impl SearchStrategy for SequentialSearch {
             for line in reader.lines() {
                 line_number += 1;
                 if let Ok(line) = line {
-                    if line.contains(pattern) {
+                    if bruteforce(&line, pattern) {
                         println!("{}", line_number);
                     }
                 }
@@ -43,7 +43,7 @@ impl SearchStrategy for ConcurrentSearch {
                     for line in reader.lines() {
                         line_number += 1;
                         if let Ok(line) = line {
-                            if line.contains(&*pattern) {
+                            if bruteforce(&line, &pattern) {
                                 println!("{}", line_number);
                             }
                         }
@@ -83,7 +83,7 @@ impl SearchStrategy for ChunkedConcurrentSearch {
                 for line in reader.lines().take(chunk_size) {
                     line_number += 1;
                     if let Ok(line) = line {
-                        if line.contains(&*pattern) {
+                        if bruteforce(&line, &pattern) {
                             println!("{}", line_number);
                         }
                     }
