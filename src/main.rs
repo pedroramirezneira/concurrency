@@ -1,10 +1,6 @@
-mod http;
-mod response;
-mod server;
-
-use http::http_status_code::HttpStatusCode;
-use response::pi::leibniz;
-use server::web_server::WebServer;
+use pi::http::http_status_code::HttpStatusCode;
+use pi::response::pi::leibniz;
+use pi::server::web_server::WebServer;
 use std::time::Instant;
 
 fn main() {

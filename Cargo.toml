@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+grep = { path = "grep" }
+pi = { path = "pi" }
+
+[workspace]
+modules = ["grep", "si"]
