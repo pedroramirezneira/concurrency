@@ -48,18 +48,20 @@ impl WebServer {
         let listener = listener.unwrap();
         println!("Server is listening on port {}", port);
         let server = Arc::new(self);
-        let mut channels = vec![];
-        let threads = Arc::new(Mutex::new(vec![]));
-        for n in 0..server.threads {
-            let threads = Arc::clone(&threads);
-            let channel = mpsc::channel::<Result<TcpStream, Error>>();
-            channels.push(channel.0);
-            threads.try_lock().unwrap().push(true);
+        let (tx, rx) = mpsc::channel::<Result<TcpStream, Error>>();
+        let rx = Arc::new(Mutex::new(rx));
+        for _ in 0..server.threads {
             let server = Arc::clone(&server);
+            let rx = Arc::clone(&rx);
             thread::spawn(move || {
-                let rx = channel.1;
                 loop {
-                    let incoming = rx.try_recv();
+                    let lock = rx.try_lock();
+                    if lock.is_err() {
+                        drop(lock);
+                        continue;
+                    }
+                    let incoming = lock.as_ref().unwrap().try_recv();
+                    drop(lock);
                     if incoming.is_err() {
                         continue;
                     }
@@ -67,11 +69,6 @@ impl WebServer {
                     if incoming.is_err() {
                         continue;
                     }
-                    let mut lock = threads.try_lock();
-                    while lock.is_err() {
-                        lock = threads.try_lock();
-                    }
-                    lock.unwrap()[n as usize] = false;
                     let mut stream = incoming.unwrap();
                     let mut buffer = vec![0; 1024 * 1024];
                     let mut request = String::new();
@@ -132,25 +129,11 @@ impl WebServer {
                     );
                     stream.write_all(response.as_bytes()).unwrap();
                     stream.flush().unwrap();
-                    let mut lock = threads.try_lock();
-                    while lock.is_err() {
-                        lock = threads.try_lock();
-                    }
-                    lock.unwrap()[n as usize] = true;
                 }
             });
         }
-        let channels = channels;
         for incoming in listener.incoming() {
-            let mut index: Option<usize> = None;
-            while index.is_none() {
-                let lock = threads.try_lock();
-                if lock.is_err() {
-                    continue;
-                }
-                index = lock.unwrap().iter().position(|thread| *thread == true);
-            }
-            let _ = channels[index.unwrap()].send(incoming);
+            let _ = tx.send(incoming);
         }
     }
 }
