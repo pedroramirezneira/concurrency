@@ -67,7 +67,11 @@ impl WebServer {
                     if incoming.is_err() {
                         continue;
                     }
-                    threads.try_lock().unwrap()[n as usize] = false;
+                    let mut lock = threads.try_lock();
+                    while lock.is_err() {
+                        lock = threads.try_lock();
+                    }
+                    lock.unwrap()[n as usize] = false;
                     let mut stream = incoming.unwrap();
                     let mut buffer = vec![0; 1024 * 1024];
                     let mut request = String::new();
@@ -128,7 +132,11 @@ impl WebServer {
                     );
                     stream.write_all(response.as_bytes()).unwrap();
                     stream.flush().unwrap();
-                    threads.try_lock().unwrap()[n as usize] = true;
+                    let mut lock = threads.try_lock();
+                    while lock.is_err() {
+                        lock = threads.try_lock();
+                    }
+                    lock.unwrap()[n as usize] = true;
                 }
             });
         }
@@ -136,11 +144,11 @@ impl WebServer {
         for incoming in listener.incoming() {
             let mut index: Option<usize> = None;
             while index.is_none() {
-                index = threads
-                    .try_lock()
-                    .unwrap()
-                    .iter()
-                    .position(|thread| *thread == true);
+                let lock = threads.try_lock();
+                if lock.is_err() {
+                    continue;
+                }
+                index = lock.unwrap().iter().position(|thread| *thread == true);
             }
             let _ = channels[index.unwrap()].send(incoming);
         }
