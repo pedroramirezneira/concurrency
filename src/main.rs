@@ -34,5 +34,6 @@ fn main() {
             }
         }
     });
+    server.threads(10);
     server.serve(5000);
 }
