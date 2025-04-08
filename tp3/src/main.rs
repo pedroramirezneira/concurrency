@@ -1,11 +1,9 @@
-use grep::bruteforce::bruteforce;
-use pi::http::http_status_code::HttpStatusCode;
-use pi::response::pi::leibniz;
-use pi::server::web_server::WebServer;
 use std::time::Instant;
+use tp3::{
+    http::http_status_code::HttpStatusCode, response::pi::leibniz, server::web_server::WebServer,
+};
 
 fn main() {
-    bruteforce("hola mundo", "mundo");
     let mut server = WebServer::new();
     server.get("/", |context| {
         context.set_status(HttpStatusCode::Ok);
@@ -30,7 +28,7 @@ fn main() {
                     pi.to_string(),
                     &elapsed.to_string()
                 );
-                context.send_text(&*result);
+                context.send_text(&result);
             }
         }
     });
