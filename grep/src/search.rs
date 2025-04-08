@@ -3,9 +3,8 @@ use std::io::{self, BufRead, Seek, SeekFrom};
 use std::sync::Arc;
 use std::thread;
 
-
-use crate::bruteforce::bruteforce;
 use crate::SearchStrategy;
+use crate::bruteforce::bruteforce;
 
 pub struct SequentialSearch;
 
@@ -51,8 +50,8 @@ impl SearchStrategy for ConcurrentSearch {
                 }
             }
         })
-            .join()
-            .unwrap();
+        .join()
+        .unwrap();
     }
 }
 
