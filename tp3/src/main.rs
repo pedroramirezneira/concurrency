@@ -4,6 +4,7 @@ use tp3::{
 };
 
 fn main() {
+
     let mut server = WebServer::new();
     server.get("/", |context| {
         context.set_status(HttpStatusCode::Ok);
