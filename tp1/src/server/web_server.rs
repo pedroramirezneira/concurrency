@@ -1,6 +1,6 @@
 use crate::{
     http::{
-        http_method::{http_method_from_string, HttpMethod},
+        http_method::{HttpMethod, http_method_from_string},
         http_status_code::HttpStatusCode,
     },
     response::not_found_response::not_found_response,

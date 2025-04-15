@@ -1,5 +1,5 @@
-use grep ::search::{ChunkedConcurrentSearch, ConcurrentSearch, SequentialSearch};
 use grep::SearchStrategy;
+use grep::search::{ChunkedConcurrentSearch, ConcurrentSearch, SequentialSearch};
 use std::env;
 
 fn main() {
@@ -27,4 +27,3 @@ fn main() {
         search_strategy.search(file, pattern);
     }
 }
-
