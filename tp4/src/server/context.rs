@@ -6,6 +6,7 @@ pub struct Context {
     status: HttpStatusCode,
     completed: bool,
     body: String,
+    boundary: Option<String>,
 }
 
 impl Context {
@@ -15,6 +16,7 @@ impl Context {
             status,
             completed: false,
             body: String::new(),
+            boundary: None,
         }
     }
 
@@ -47,5 +49,16 @@ impl Context {
     /** Gets the set response through send_text */
     pub fn get_body(&self) -> &String {
         &self.body
+    }
+
+    pub fn set_boundary(&mut self, boundary: String) {
+        if self.completed {
+            panic!("Cannot set boundary after response has been sent");
+        }
+        self.boundary = Some(boundary);
+    }
+
+    pub fn get_boundary(&self) -> Option<&String> {
+        self.boundary.as_ref()
     }
 }

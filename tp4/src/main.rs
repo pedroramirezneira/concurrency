@@ -1,13 +1,9 @@
-mod upload_handler;
-mod stats_handler;
-mod rejection_handler;
+mod server;
 
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{Semaphore, RwLock};
-use warp::Filter;
-use upload_handler::handle_upload;
-use stats_handler::handle_stats;
-use rejection_handler::handle_rejection;
+use tokio::sync::{RwLock, Semaphore};
+use tp4::http::http_status_code::HttpStatusCode::BadRequest;
+use tp4::server::{multipart_parser::parse_multipart_body, web_server::WebServer};
 
 #[derive(Default)]
 struct AppState {
@@ -23,24 +19,20 @@ async fn main() {
     let state = Arc::new(RwLock::new(AppState::default()));
     let semaphore = Arc::new(Semaphore::new(4));
 
-    let upload_state = state.clone();
-    let upload_semaphore = semaphore.clone();
-
-    let upload_route = warp::post()
-        .and(warp::path("upload"))
-        .and(warp::multipart::form().max_length(5_000_000))
-        .and_then(move |form| {
-            let state = upload_state.clone();
-            let sem = upload_semaphore.clone();
-            handle_upload(form, state, sem)
-        });
-
-    let stats_route = warp::get()
-        .and(warp::path("stats"))
-        .and_then(move || handle_stats(state.clone()));
-
-    let routes = upload_route.or(stats_route).recover(handle_rejection);
-
-    println!("Server running at http://localhost:3030");
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let _upload_state = state.clone();
+    let _upload_semaphore = semaphore.clone();
+    let mut server = WebServer::new();
+    server.post("/upload", |context| {
+        let body = context.get_request().get_body();
+        let boundary = context.get_boundary();
+        if body.is_none() || boundary.is_none() {
+            context.set_status(BadRequest);
+            context.send_text("ERROR");
+            return;
+        }
+        let _map = parse_multipart_body(body.unwrap(), boundary.unwrap());
+        context.send_text("Jajajaja");
+    });
+    server.threads(16);
+    server.serve(5000);
 }
