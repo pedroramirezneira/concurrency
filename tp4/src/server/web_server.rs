@@ -39,6 +39,11 @@ impl WebServer {
         self.handlers.insert(key, handler);
     }
 
+    pub fn post(&mut self, route: &str, handler: fn(context: &mut Context)) {
+        let key = Pair::new(HttpMethod::Post, route.to_string());
+        self.handlers.insert(key, handler);
+    }
+
     pub fn serve(self, port: u32) {
         let address = format!("127.0.0.1:{}", port);
         let listener = TcpListener::bind(address);
