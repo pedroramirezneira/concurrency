@@ -48,7 +48,6 @@ fn main() {
         Box::new(move |context| {
             let request_body = context.get_request().get_body();
             let content_type = context.get_request().get_header("Content-Type");
-            println!("DEBUG Content-Type: {:?}", content_type);
 
             let Some(content_type) = content_type else {
                 context.set_status(HttpStatusCode::BadRequest);
