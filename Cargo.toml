@@ -10,4 +10,4 @@ members = [
     "tp2",
     "tp3",
     "grep"
-]
+, "tp5", "tp6", "tp7"]
