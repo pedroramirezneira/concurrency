@@ -1,16 +1,16 @@
 use crate::structs::stats::Stats;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 pub struct SharedState {
-    pub stats: Arc<Mutex<Stats>>,
+    pub stats: Arc<RwLock<Stats>>,
     pub semaphore: Arc<Semaphore>,
 }
 
 impl SharedState {
     pub fn new() -> Self {
         SharedState {
-            stats: Arc::new(Mutex::new(Stats::new())),
+            stats: Arc::new(RwLock::new(Stats::new())),
             semaphore: Arc::new(Semaphore::new(4)),
         }
     }

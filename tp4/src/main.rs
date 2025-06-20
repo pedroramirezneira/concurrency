@@ -69,7 +69,7 @@ fn main() {
             match MultipartParser::parse_file_and_count_exceptions(request_body, &boundary) {
                 Ok((filename, exception_count)) => {
                     {
-                        let mut stats = state.stats.lock().unwrap();
+                        let mut stats = state.stats.write().unwrap();
                         stats.add_file(&filename, exception_count);
                     }
                     context.set_status(HttpStatusCode::Ok);
@@ -86,7 +86,7 @@ fn main() {
     server.get(
         "/stats",
         Box::new(move |context| {
-            let stats = state_for_stats.stats.lock().unwrap();
+            let stats = state_for_stats.stats.read().unwrap();
             context.set_status(HttpStatusCode::Ok);
             context.send_text(&stats.as_string());
         }),
