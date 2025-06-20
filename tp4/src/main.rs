@@ -5,6 +5,7 @@ use tp4::{
     server::web_server::WebServer,
     structs::{multipart_parser::MultipartParser, shared_state::SharedState},
 };
+use grep::search;
 
 fn main() {
     let shared_state = Arc::new(SharedState::new());

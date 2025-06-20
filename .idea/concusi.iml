@@ -10,6 +10,7 @@
       <sourceFolder url="file://$MODULE_DIR$/tp5/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tp6/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tp7/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tp4/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/grep/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/tp1/target" />
