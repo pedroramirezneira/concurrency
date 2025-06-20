@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, Seek, SeekFrom};
+use std::io::{self, BufRead};
 use std::sync::Arc;
 use std::thread;
 
@@ -9,92 +9,83 @@ use crate::bruteforce::bruteforce;
 pub struct SequentialSearch;
 
 impl SearchStrategy for SequentialSearch {
-    fn search(&self, file_path: &str, pattern: &str) {
-        let mut line_number = 0;
-        if let Ok(file) = File::open(file_path) {
+    fn search(&self, file_paths: &[String], pattern: &str) {
+        for file_path in file_paths {
+            let file = File::open(file_path).expect("Error opening file");
             let reader = io::BufReader::new(file);
-            for line in reader.lines() {
-                line_number += 1;
+            for (line_number, line) in reader.lines().enumerate() {
                 if let Ok(line) = line {
                     if bruteforce(&line, pattern) {
-                        println!("{}", line_number);
+                        println!("{}:{}", file_path, line_number + 1);
                     }
                 }
             }
         }
     }
 }
+
 
 pub struct ConcurrentSearch;
 
 impl SearchStrategy for ConcurrentSearch {
-    fn search(&self, file_path: &str, pattern: &str) {
-        let mut line_number = 0;
+    fn search(&self, file_paths: &[String], pattern: &str) {
         let pattern = Arc::new(pattern.to_string());
-
-        thread::spawn({
-            let file_path = file_path.to_string();
+        let mut handles = vec![];
+        for file_path in file_paths {
+            let file_path = file_path.clone();
             let pattern = Arc::clone(&pattern);
-
-            move || {
+            let handle = thread::spawn(move || {
                 if let Ok(file) = File::open(&file_path) {
                     let reader = io::BufReader::new(file);
-                    for line in reader.lines() {
-                        line_number += 1;
+                    for (line_number, line) in reader.lines().enumerate() {
                         if let Ok(line) = line {
                             if bruteforce(&line, &pattern) {
-                                println!("{}", line_number);
+                                println!("{}:{}", file_path, line_number + 1);
                             }
                         }
                     }
                 }
-            }
-        })
-        .join()
-        .unwrap();
+            });
+            handles.push(handle);
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
 }
 
+
 pub struct ChunkedConcurrentSearch {
-    pub chunk_size: usize, // Tamaño de cada chunk en bytes
+    pub chunk_size: usize,
 }
 
 impl SearchStrategy for ChunkedConcurrentSearch {
-    fn search(&self, file_path: &str, pattern: &str) {
-        let file = File::open(file_path).expect("Error abriendo el archivo");
-        let file_size = file.metadata().unwrap().len() as usize;
-
+    fn search(&self, file_paths: &[String], pattern: &str) {
         let pattern = Arc::new(pattern.to_string());
-
-        let mut handles = vec![];
-        let mut start = 0;
-        let mut line_number = 0;
-        while start < file_size {
-            let chunk_size = self.chunk_size.min(file_size - start);
+        for file_path in file_paths {
+            let file_path = file_path.clone();
             let pattern = Arc::clone(&pattern);
-            let file_path = file_path.to_string();
-
-            let handle = thread::spawn(move || {
-                let mut file = File::open(&file_path).unwrap();
-                file.seek(SeekFrom::Start(start as u64)).unwrap();
-                let reader = io::BufReader::new(file);
-
-                for line in reader.lines().take(chunk_size) {
-                    line_number += 1;
-                    if let Ok(line) = line {
-                        if bruteforce(&line, &pattern) {
-                            println!("{}", line_number);
+            let file = File::open(&file_path).expect("Error opening the file");
+            let reader = io::BufReader::new(file);
+            let lines: Vec<String> = reader.lines().filter_map(Result::ok).collect();
+            let mut handles = vec![];
+            for (chunk_index, chunk) in lines.chunks(self.chunk_size).enumerate() {
+                let chunk = chunk.to_owned();
+                let pattern = Arc::clone(&pattern);
+                let file_path = file_path.clone();
+                let handle = thread::spawn(move || {
+                    for (i, line) in chunk.iter().enumerate() {
+                        if bruteforce(line, &pattern) {
+                            let global_line_number = chunk_index * chunk.len() + i + 1;
+                            println!("{}:{}", file_path, global_line_number);
                         }
                     }
-                }
-            });
-
-            handles.push(handle);
-            start += chunk_size;
-        }
-
-        for handle in handles {
-            handle.join().unwrap();
+                });
+                handles.push(handle);
+            }
+            for handle in handles {
+                handle.join().unwrap();
+            }
         }
     }
 }
