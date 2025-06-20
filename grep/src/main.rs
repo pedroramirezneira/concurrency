@@ -26,16 +26,3 @@ fn main() {
     let file_list: Vec<String> = files.iter().map(|s| s.to_string()).collect();
     search_strategy.search(&file_list, pattern);
 }
-
-fn search(files: &[String], pattern: &str, strat: &str) {
-    let strategy: Box<dyn SearchStrategy> = match strat {
-        "seq" => Box::new(SequentialSearch),
-        "conc" => Box::new(ConcurrentSearch),
-        "c-chunk" => Box::new(ChunkedConcurrentSearch { chunk_size: 1024 }), // 1 KB por chunk
-        _ => {
-            eprintln!("Modo no válido. Usa 'seq', 'conc' o 'c-chunk'.");
-            return;
-        }
-    };
-    strategy.search(files, pattern);
-}

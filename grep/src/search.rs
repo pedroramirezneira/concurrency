@@ -9,7 +9,8 @@ use crate::bruteforce::bruteforce;
 pub struct SequentialSearch;
 
 impl SearchStrategy for SequentialSearch {
-    fn search(&self, file_paths: &[String], pattern: &str) {
+    fn search(&self, file_paths: &[String], pattern: &str) -> usize {
+        let mut count = 0;
         for file_path in file_paths {
             let file = File::open(file_path).expect("Error opening file");
             let reader = io::BufReader::new(file);
@@ -17,29 +18,33 @@ impl SearchStrategy for SequentialSearch {
                 if let Ok(line) = line {
                     if bruteforce(&line, pattern) {
                         println!("{}:{}", file_path, line_number + 1);
+                        count += 1;
                     }
                 }
             }
         }
+        count
     }
 }
-
 
 pub struct ConcurrentSearch;
 
 impl SearchStrategy for ConcurrentSearch {
-    fn search(&self, file_paths: &[String], pattern: &str) {
+    fn search(&self, file_paths: &[String], pattern: &str) -> usize {
         let pattern = Arc::new(pattern.to_string());
+        let count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let mut handles = vec![];
         for file_path in file_paths {
             let file_path = file_path.clone();
             let pattern = Arc::clone(&pattern);
+            let count = Arc::clone(&count);
             let handle = thread::spawn(move || {
                 if let Ok(file) = File::open(&file_path) {
                     let reader = io::BufReader::new(file);
                     for (line_number, line) in reader.lines().enumerate() {
                         if let Ok(line) = line {
                             if bruteforce(&line, &pattern) {
+                                count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                                 println!("{}:{}", file_path, line_number + 1);
                             }
                         }
@@ -51,17 +56,18 @@ impl SearchStrategy for ConcurrentSearch {
         for handle in handles {
             handle.join().unwrap();
         }
+        count.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
-
 
 pub struct ChunkedConcurrentSearch {
     pub chunk_size: usize,
 }
 
 impl SearchStrategy for ChunkedConcurrentSearch {
-    fn search(&self, file_paths: &[String], pattern: &str) {
+    fn search(&self, file_paths: &[String], pattern: &str) -> usize {
         let pattern = Arc::new(pattern.to_string());
+        let count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         for file_path in file_paths {
             let file_path = file_path.clone();
             let pattern = Arc::clone(&pattern);
@@ -72,12 +78,14 @@ impl SearchStrategy for ChunkedConcurrentSearch {
             for (chunk_index, chunk) in lines.chunks(self.chunk_size).enumerate() {
                 let chunk = chunk.to_owned();
                 let pattern = Arc::clone(&pattern);
+                let count = Arc::clone(&count);
                 let file_path = file_path.clone();
                 let handle = thread::spawn(move || {
                     for (i, line) in chunk.iter().enumerate() {
                         if bruteforce(line, &pattern) {
                             let global_line_number = chunk_index * chunk.len() + i + 1;
                             println!("{}:{}", file_path, global_line_number);
+                            count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         }
                     }
                 });
@@ -87,5 +95,6 @@ impl SearchStrategy for ChunkedConcurrentSearch {
                 handle.join().unwrap();
             }
         }
+        count.load(std::sync::atomic::Ordering::Relaxed)
     }
 }

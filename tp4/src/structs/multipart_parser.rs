@@ -57,4 +57,22 @@ impl MultipartParser {
         }
         None
     }
+
+    pub fn extract_file_content(body: &str, boundary: &str) -> Option<Vec<u8>> {
+        let boundary_marker = format!("--{}", boundary);
+        let parts: Vec<&str> = body.split(&boundary_marker).collect();
+        for part in parts {
+            if part.contains("Content-Disposition") && part.contains("filename=") {
+                // Buscamos el separador entre headers y contenido
+                if let Some(idx) = part.find("\r\n\r\n") {
+                    let content = &part[idx + 4..];
+                    // Quitamos el trailing \r\n si está
+                    let content = content.trim_end_matches("\r\n");
+                    return Some(content.as_bytes().to_vec());
+                }
+            }
+        }
+
+        None
+    }
 }

@@ -1,11 +1,11 @@
-use std::{sync::Arc, time::Instant};
+use grep::{SearchStrategy, search::ConcurrentSearch};
+use std::{fs, sync::Arc, time::Instant};
 use tp4::{
     http::http_status_code::HttpStatusCode,
     response::pi::leibniz,
     server::web_server::WebServer,
     structs::{multipart_parser::MultipartParser, shared_state::SharedState},
 };
-use grep::search;
 
 fn main() {
     let shared_state = Arc::new(SharedState::new());
@@ -55,13 +55,16 @@ fn main() {
                 context.send_text("Missing Content-Type header");
                 return;
             };
+
             let Some(boundary) = MultipartParser::extract_boundary(content_type) else {
                 context.set_status(HttpStatusCode::BadRequest);
                 context.send_text("Missing boundary in Content-Type");
                 return;
             };
+
             let filename = MultipartParser::extract_filename(request_body, &boundary)
                 .unwrap_or_else(|| "unknown".to_string());
+
             let Some(_permit) = state.try_start_processing() else {
                 {
                     let mut stats = state.stats.write().unwrap();
@@ -71,18 +74,34 @@ fn main() {
                 context.send_text("Too many files being processed");
                 return;
             };
-            match MultipartParser::parse_file_and_count_exceptions(request_body, &boundary) {
-                Ok((filename, exception_count)) => {
+
+            match MultipartParser::extract_file_content(request_body, &boundary) {
+                Some(file_content) => {
+                    // 1. Guardar archivo temporalmente
+                    let temp_path = format!("/tmp/{}", filename);
+                    if fs::write(&temp_path, &file_content).is_err() {
+                        context.set_status(HttpStatusCode::InternalServerError);
+                        context.send_text("Error writing temporary file");
+                        return;
+                    }
+                    let searcher = ConcurrentSearch;
+                    let count = searcher.search(&[temp_path.clone()], "exception");
                     {
                         let mut stats = state.stats.write().unwrap();
-                        stats.add_file(&filename, exception_count);
+                        stats.add_file(&filename, count.try_into().unwrap());
                     }
+
+                    let _ = fs::remove_file(&temp_path);
+
                     context.set_status(HttpStatusCode::Ok);
-                    context.send_text(&format!("Processed file: {}", filename));
+                    context.send_text(&format!(
+                        "Processed file: {} with {} exceptions",
+                        filename, count
+                    ));
                 }
-                Err(error) => {
+                None => {
                     context.set_status(HttpStatusCode::BadRequest);
-                    context.send_text(&error);
+                    context.send_text("No file content found");
                 }
             }
         }),
