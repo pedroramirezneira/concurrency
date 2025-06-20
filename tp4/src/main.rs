@@ -59,13 +59,17 @@ fn main() {
                 context.send_text("Missing boundary in Content-Type");
                 return;
             };
-
+            let filename = MultipartParser::extract_filename(request_body, &boundary)
+                .unwrap_or_else(|| "unknown".to_string());
             let Some(_permit) = state.try_start_processing() else {
+                {
+                    let mut stats = state.stats.write().unwrap();
+                    stats.add_file(&filename, 1);
+                }
                 context.set_status(HttpStatusCode::TooManyRequests);
                 context.send_text("Too many files being processed");
                 return;
             };
-
             match MultipartParser::parse_file_and_count_exceptions(request_body, &boundary) {
                 Ok((filename, exception_count)) => {
                     {

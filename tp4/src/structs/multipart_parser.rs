@@ -1,7 +1,6 @@
 pub struct MultipartParser;
 
 impl MultipartParser {
-    /// Extrae el boundary desde el Content-Type
     pub fn extract_boundary(content_type: &str) -> Option<String> {
         content_type
             .split("boundary=")
@@ -9,7 +8,6 @@ impl MultipartParser {
             .map(|s| format!("--{}", s.trim()))
     }
 
-    /// Parsea el body multipart y cuenta las líneas que contienen "exception"
     pub fn parse_file_and_count_exceptions(
         body: &str,
         boundary: &str,
@@ -42,5 +40,21 @@ impl MultipartParser {
         }
 
         Err("No file part found".to_string())
+    }
+
+    pub fn extract_filename(body: &str, boundary: &str) -> Option<String> {
+        let boundary_marker = format!("--{}", boundary);
+        for part in body.split(&boundary_marker) {
+            if let Some(disposition_line) = part.lines().find(|l| l.contains("Content-Disposition"))
+            {
+                if let Some(start) = disposition_line.find("filename=\"") {
+                    let rest = &disposition_line[start + 10..];
+                    if let Some(end) = rest.find('"') {
+                        return Some(rest[..end].to_string());
+                    }
+                }
+            }
+        }
+        None
     }
 }
