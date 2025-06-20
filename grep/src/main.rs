@@ -23,7 +23,6 @@ fn main() {
         }
     };
 
-    for file in files {
-        search_strategy.search(file, pattern);
-    }
+    let file_list: Vec<String> = files.iter().map(|s| s.to_string()).collect();
+    search_strategy.search(&file_list, pattern);
 }
