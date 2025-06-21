@@ -1,8 +1,8 @@
-use grep::{SearchStrategy, search::ConcurrentSearch};
-use std::{fs, sync::Arc, time::Instant};
+use grep::{SearchStrategy};
+use std::{fs, sync::Arc};
+use grep::search::SequentialSearch;
 use tp4::{
     http::http_status_code::HttpStatusCode,
-    response::pi::leibniz,
     server::web_server::WebServer,
     structs::{multipart_parser::MultipartParser, shared_state::SharedState},
 };
@@ -15,32 +15,6 @@ fn main() {
         Box::new(|context| {
             context.set_status(HttpStatusCode::Ok);
             context.send_text("Hello World");
-        }),
-    );
-    server.get(
-        "/pi/:a",
-        Box::new(|context| {
-            let start = Instant::now();
-            let number = context.get_request().get_param("a").unwrap();
-            let number = number.parse::<u64>();
-            match number {
-                Err(_) => {
-                    context.set_status(HttpStatusCode::BadRequest);
-                    context.send_text("Invalid number");
-                }
-                Ok(number) => {
-                    context.set_status(HttpStatusCode::Ok);
-                    let pi = leibniz(number);
-                    let elapsed = start.elapsed().as_secs_f64();
-                    let result = format!(
-                        "Valor de pi para el termino {}: {} (Tiempo: {})",
-                        number,
-                        pi.to_string(),
-                        &elapsed.to_string()
-                    );
-                    context.send_text(&result);
-                }
-            }
         }),
     );
     let state = Arc::clone(&shared_state);
@@ -77,15 +51,25 @@ fn main() {
 
             match MultipartParser::extract_file_content(request_body, &boundary) {
                 Some(file_content) => {
-                    // 1. Guardar archivo temporalmente
-                    let temp_path = format!("/tmp/{}", filename);
+                    let temp_folder = "./temp";
+                    if let Err(e) = fs::create_dir_all(temp_folder) {
+                        context.set_status(HttpStatusCode::InternalServerError);
+                        context.send_text(&format!("Could not create temp folder: {}", e));
+                        return;
+                    }
+
+                    let filename = filename.replace(|c: char| !c.is_ascii_alphanumeric(), "_"); // sanitize
+                    let temp_path = format!("{}/{}", temp_folder, filename);
+
                     if fs::write(&temp_path, &file_content).is_err() {
                         context.set_status(HttpStatusCode::InternalServerError);
                         context.send_text("Error writing temporary file");
                         return;
                     }
-                    let searcher = ConcurrentSearch;
+
+                    let searcher = SequentialSearch;
                     let count = searcher.search(&[temp_path.clone()], "exception");
+
                     {
                         let mut stats = state.stats.write().unwrap();
                         stats.add_file(&filename, count.try_into().unwrap());

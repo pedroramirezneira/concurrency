@@ -30,34 +30,41 @@ impl SearchStrategy for SequentialSearch {
 pub struct ConcurrentSearch;
 
 impl SearchStrategy for ConcurrentSearch {
+
     fn search(&self, file_paths: &[String], pattern: &str) -> usize {
         let pattern = Arc::new(pattern.to_string());
-        let count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let mut handles = vec![];
+
         for file_path in file_paths {
             let file_path = file_path.clone();
             let pattern = Arc::clone(&pattern);
-            let count = Arc::clone(&count);
+
             let handle = thread::spawn(move || {
+                let mut local_count = 0;
                 if let Ok(file) = File::open(&file_path) {
                     let reader = io::BufReader::new(file);
                     for (line_number, line) in reader.lines().enumerate() {
                         if let Ok(line) = line {
                             if bruteforce(&line, &pattern) {
-                                count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                local_count += 1;
                                 println!("{}:{}", file_path, line_number + 1);
                             }
                         }
                     }
                 }
+                local_count
             });
+
             handles.push(handle);
         }
-        for handle in handles {
-            handle.join().unwrap();
-        }
-        count.load(std::sync::atomic::Ordering::Relaxed)
+
+        // Sum the results from each thread
+        handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap_or(0))
+            .sum()
     }
+
 }
 
 pub struct ChunkedConcurrentSearch {
