@@ -1,6 +1,6 @@
 use grep::{SearchStrategy};
 use std::{fs, sync::Arc};
-use grep::search::SequentialSearch;
+use grep::search::{SequentialSearch};
 use tp4::{
     http::http_status_code::HttpStatusCode,
     server::web_server::WebServer,
